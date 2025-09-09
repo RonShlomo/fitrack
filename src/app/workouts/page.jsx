@@ -259,10 +259,10 @@ export default function WorkoutsPage() {
           ) : (
             <div className="divide-y divide-gray-700/50">
               {/* Table Header */}
-              <div className="bg-gray-700/30 px-8 py-4 grid grid-cols-12 gap-4 text-sm font-bold text-gray-300">
-                <div className="col-span-7">תיאור</div>
-                <div className="col-span-2 text-center">משקל (ק״ג)</div>
-                <div className="col-span-3 text-center">פעולות</div>
+              <div className="bg-gray-700/30 px-4 md:px-8 py-4 grid grid-cols-1 md:grid-cols-12 gap-4 text-sm font-bold text-gray-300">
+                <div className="md:col-span-7">תיאור</div>
+                <div className="md:col-span-2 text-center">משקל (ק״ג)</div>
+                <div className="md:col-span-3 text-center">פעולות</div>
               </div>
 
               {/* Exercise Rows */}
@@ -309,63 +309,93 @@ function ExerciseRow({ exercise, isEditing, onEdit, onSave, onCancel, onDelete }
   }
 
   return (
-    <div className="px-8 py-6 grid grid-cols-12 gap-4 items-center hover:bg-gray-700/30 transition-colors duration-200">
+    <div className="px-4 md:px-8 py-6 hover:bg-gray-700/30 transition-colors duration-200">
       {isEditing ? (
-        <>
-          <div className="col-span-7">
+        <div className="space-y-4">
+          <div>
             <input
               type="text"
               value={editValues.description}
               onChange={(e) => setEditValues({...editValues, description: e.target.value})}
-              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+              placeholder="תיאור התרגיל"
             />
           </div>
-          <div className="col-span-2">
+          <div className="flex gap-3">
             <input
               type="number"
               value={editValues.weight}
               onChange={(e) => setEditValues({...editValues, weight: e.target.value})}
-              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-center focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+              className="flex-1 px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-center focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+              placeholder="משקל"
             />
-          </div>
-          <div className="col-span-3 flex gap-3 justify-center">
             <button
               onClick={handleSave}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 transform hover:scale-105"
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 transform hover:scale-105"
             >
-              ✓
+              ✓ שמור
             </button>
             <button
               onClick={handleCancel}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 transform hover:scale-105"
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 transform hover:scale-105"
             >
-              ✕
+              ✕ ביטול
             </button>
           </div>
-        </>
+        </div>
       ) : (
-        <>
-          <div className="col-span-7">
-            <span className="text-white font-medium">{exercise.description}</span>
+        <div className="space-y-4">
+          {/* Mobile Layout */}
+          <div className="md:hidden space-y-3">
+            <div>
+              <span className="text-white font-medium text-lg">{exercise.description}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 text-sm">משקל:</span>
+                <span className="font-bold text-red-400 text-xl">{exercise.weight} ק״ג</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={onEdit}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105"
+                >
+                  ערוך
+                </button>
+                <button
+                  onClick={() => onDelete(exercise.id)}
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105"
+                >
+                  מחק
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="col-span-2 text-center">
-            <span className="font-bold text-red-400 text-lg">{exercise.weight}</span>
+          
+          {/* Desktop Layout */}
+          <div className="hidden md:grid md:grid-cols-12 md:gap-4 md:items-center">
+            <div className="col-span-7">
+              <span className="text-white font-medium">{exercise.description}</span>
+            </div>
+            <div className="col-span-2 text-center">
+              <span className="font-bold text-red-400 text-lg">{exercise.weight}</span>
+            </div>
+            <div className="col-span-3 flex gap-3 justify-center">
+              <button
+                onClick={onEdit}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105"
+              >
+                ערוך
+              </button>
+              <button
+                onClick={() => onDelete(exercise.id)}
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105"
+              >
+                מחק
+              </button>
+            </div>
           </div>
-          <div className="col-span-3 flex gap-3 justify-center">
-            <button
-              onClick={onEdit}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105"
-            >
-              ערוך
-            </button>
-            <button
-              onClick={() => onDelete(exercise.id)}
-              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105"
-            >
-              מחק
-            </button>
-          </div>
-        </>
+        </div>
       )}
     </div>
   )

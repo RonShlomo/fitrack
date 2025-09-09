@@ -125,40 +125,50 @@ export default function WorkoutsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(220,38,38,0.1),transparent_50%)]"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_25%,rgba(220,38,38,0.05)_50%,transparent_75%)]"></div>
+      
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+      <header className="relative bg-black/40 backdrop-blur-sm border-b border-gray-800">
+        <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <Link 
               href="/" 
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+              className="text-red-400 hover:text-red-300 flex items-center gap-2 font-semibold transition-colors duration-200 group"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 transform group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               חזרה לדף הבית
             </Link>
             
-            <h1 className="text-2xl font-bold text-gray-900">
-              מעקב אימונים 💪
-            </h1>
+            <div className="text-center">
+              <h1 className="text-3xl font-black text-white tracking-tight">
+                מעקב אימונים
+              </h1>
+              <div className="flex items-center justify-center gap-2 mt-1">
+                <span className="text-2xl">💪</span>
+                <div className="w-16 h-1 bg-gradient-to-r from-red-600 to-amber-600 rounded-full"></div>
+              </div>
+            </div>
             <div></div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="relative max-w-4xl mx-auto px-4 py-8">
         
         {/* Error Display */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          <div className="bg-red-900/50 border border-red-500/50 text-red-200 px-6 py-4 rounded-xl mb-8 backdrop-blur-sm">
             <div className="flex justify-between items-center">
-              <span>{error}</span>
+              <span className="font-medium">{error}</span>
               <button 
                 onClick={() => {setError(null); loadExercises()}}
-                className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200"
               >
                 נסה שוב
               </button>
@@ -167,12 +177,19 @@ export default function WorkoutsPage() {
         )}
         
         {/* Add New Exercise Form */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">הוסף תרגיל חדש</h2>
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-8 mb-8 border border-gray-700/50">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-white">הוסף תרגיל חדש</h2>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
-              <label className="block text-gray-700 text-sm font-medium mb-2">
+              <label className="block text-gray-300 text-sm font-semibold mb-3">
                 תיאור התרגיל
               </label>
               <input
@@ -180,58 +197,69 @@ export default function WorkoutsPage() {
                 value={newExercise.description}
                 onChange={(e) => setNewExercise({...newExercise, description: e.target.value})}
                 placeholder="לדוגמה: בנץ' פרס עליון"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
               />
             </div>
             
             <div>
-              <label className="block text-gray-700 text-sm font-medium mb-2">
+              <label className="block text-gray-300 text-sm font-semibold mb-3">
                 משקל (ק״ג)
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={newExercise.weight}
-                  onChange={(e) => setNewExercise({...newExercise, weight: e.target.value})}
-                  placeholder="80"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  onClick={addExercise}
-                  disabled={loading}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                >
-                  {loading ? '...' : 'הוסף'}
-                </button>
-              </div>
+              <input
+                type="number"
+                value={newExercise.weight}
+                onChange={(e) => setNewExercise({...newExercise, weight: e.target.value})}
+                placeholder="80"
+                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+              />
             </div>
+          </div>
+          
+          {/* Add Button - Full Width */}
+          <div className="mt-6">
+            <button
+              onClick={addExercise}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-6 py-4 rounded-xl font-bold transition-all duration-200 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transform hover:scale-[1.02] disabled:hover:scale-100"
+            >
+              {loading ? '...' : 'הוסף תרגיל חדש'}
+            </button>
           </div>
         </div>
 
         {/* Exercises List */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="bg-gray-50 px-6 py-4 border-b">
-            <h2 className="text-xl font-bold text-gray-900">רשימת התרגילים</h2>
-            {exercises.length > 0 && (
-              <p className="text-gray-600 text-sm mt-1">סה״כ {exercises.length} תרגילים</p>
-            )}
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-gray-700/50">
+          <div className="bg-gradient-to-r from-gray-700/50 to-gray-800/50 px-8 py-6 border-b border-gray-600/50">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">רשימת התרגילים</h2>
+                {exercises.length > 0 && (
+                  <p className="text-gray-400 text-sm mt-1">סה״כ {exercises.length} תרגילים</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {loading ? (
-            <div className="p-12 text-center">
-              <div className="text-gray-400 text-2xl mb-4">⏳</div>
-              <p className="text-gray-500">טוען תרגילים...</p>
+            <div className="p-16 text-center">
+              <div className="text-6xl mb-6">⏳</div>
+              <p className="text-gray-400 text-lg font-medium">טוען תרגילים...</p>
             </div>
           ) : exercises.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="text-gray-400 text-6xl mb-4">🏋️</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">עדיין לא הוספת תרגילים</h3>
-              <p className="text-gray-500">התחל בהוספת התרגיל הראשון שלך למעלה</p>
+            <div className="p-16 text-center">
+              <div className="text-8xl mb-6">🏋️</div>
+              <h3 className="text-xl font-bold text-white mb-3">עדיין לא הוספת תרגילים</h3>
+              <p className="text-gray-400 text-lg">התחל בהוספת התרגיל הראשון שלך למעלה</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-gray-700/50">
               {/* Table Header */}
-              <div className="bg-gray-50 px-6 py-3 grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
+              <div className="bg-gray-700/30 px-8 py-4 grid grid-cols-12 gap-4 text-sm font-bold text-gray-300">
                 <div className="col-span-7">תיאור</div>
                 <div className="col-span-2 text-center">משקל (ק״ג)</div>
                 <div className="col-span-3 text-center">פעולות</div>
@@ -253,29 +281,6 @@ export default function WorkoutsPage() {
           )}
         </div>
 
-        {/* Summary Stats */}
-        {exercises.length > 0 && (
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{exercises.length}</div>
-              <div className="text-gray-600">תרגילים באימון</div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">
-                {Math.round(exercises.reduce((sum, ex) => sum + ex.weight, 0))}
-              </div>
-              <div className="text-gray-600">סה״כ משקל (ק״ג)</div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-2">
-                {exercises.length > 0 ? Math.round(exercises.reduce((sum, ex) => sum + ex.weight, 0) / exercises.length) : 0}
-              </div>
-              <div className="text-gray-600">משקל ממוצע (ק״ג)</div>
-            </div>
-          </div>
-        )}
 
       </main>
     </div>
@@ -304,7 +309,7 @@ function ExerciseRow({ exercise, isEditing, onEdit, onSave, onCancel, onDelete }
   }
 
   return (
-    <div className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-gray-50">
+    <div className="px-8 py-6 grid grid-cols-12 gap-4 items-center hover:bg-gray-700/30 transition-colors duration-200">
       {isEditing ? (
         <>
           <div className="col-span-7">
@@ -312,7 +317,7 @@ function ExerciseRow({ exercise, isEditing, onEdit, onSave, onCancel, onDelete }
               type="text"
               value={editValues.description}
               onChange={(e) => setEditValues({...editValues, description: e.target.value})}
-              className="w-full px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
             />
           </div>
           <div className="col-span-2">
@@ -320,19 +325,19 @@ function ExerciseRow({ exercise, isEditing, onEdit, onSave, onCancel, onDelete }
               type="number"
               value={editValues.weight}
               onChange={(e) => setEditValues({...editValues, weight: e.target.value})}
-              className="w-full px-3 py-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-center focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
             />
           </div>
-          <div className="col-span-3 flex gap-2 justify-center">
+          <div className="col-span-3 flex gap-3 justify-center">
             <button
               onClick={handleSave}
-              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 transform hover:scale-105"
             >
               ✓
             </button>
             <button
               onClick={handleCancel}
-              className="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 transform hover:scale-105"
             >
               ✕
             </button>
@@ -341,21 +346,21 @@ function ExerciseRow({ exercise, isEditing, onEdit, onSave, onCancel, onDelete }
       ) : (
         <>
           <div className="col-span-7">
-            <span className="text-gray-900">{exercise.description}</span>
+            <span className="text-white font-medium">{exercise.description}</span>
           </div>
           <div className="col-span-2 text-center">
-            <span className="font-medium text-blue-600">{exercise.weight}</span>
+            <span className="font-bold text-red-400 text-lg">{exercise.weight}</span>
           </div>
-          <div className="col-span-3 flex gap-2 justify-center">
+          <div className="col-span-3 flex gap-3 justify-center">
             <button
               onClick={onEdit}
-              className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105"
             >
               ערוך
             </button>
             <button
               onClick={() => onDelete(exercise.id)}
-              className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 transform hover:scale-105"
             >
               מחק
             </button>

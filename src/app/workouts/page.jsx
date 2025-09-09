@@ -1,38 +1,127 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function WorkoutsPage() {
   const [exercises, setExercises] = useState([])
   const [newExercise, setNewExercise] = useState({ description: '', weight: '' })
   const [editingId, setEditingId] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // טעינת תרגילים מהשרת
+  const loadExercises = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/exercises')
+      const result = await response.json()
+      
+      if (result.success) {
+        setExercises(result.data)
+      } else {
+        setError('שגיאה בטעינת התרגילים')
+      }
+    } catch (err) {
+      setError('שגיאה בחיבור לשרת')
+      console.error('Error loading exercises:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // טעינה ראשונית
+  useEffect(() => {
+    loadExercises()
+  }, [])
 
   // הוספת תרגיל חדש
-  const addExercise = () => {
-    if (newExercise.description.trim() && newExercise.weight.trim()) {
-      const exercise = {
-        id: Date.now(),
-        description: newExercise.description,
-        weight: parseFloat(newExercise.weight) || 0
+  const addExercise = async () => {
+    if (!newExercise.description.trim() || !newExercise.weight.trim()) {
+      alert('אנא מלא את כל השדות')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/exercises', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          description: newExercise.description,
+          weight: parseFloat(newExercise.weight)
+        })
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setExercises([...exercises, result.data])
+        setNewExercise({ description: '', weight: '' })
+      } else {
+        alert('שגיאה בהוספת התרגיל: ' + result.error)
       }
-      setExercises([...exercises, exercise])
-      setNewExercise({ description: '', weight: '' })
+    } catch (err) {
+      alert('שגיאה בחיבור לשרת')
+      console.error('Error adding exercise:', err)
     }
   }
 
   // מחיקת תרגיל
-  const deleteExercise = (id) => {
-    setExercises(exercises.filter(ex => ex.id !== id))
+  const deleteExercise = async (id) => {
+    if (!confirm('האם אתה בטוח שברצונך למחוק את התרגיל?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/exercises?id=${id}`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setExercises(exercises.filter(ex => ex.id !== id))
+      } else {
+        alert('שגיאה במחיקת התרגיל: ' + result.error)
+      }
+    } catch (err) {
+      alert('שגיאה בחיבור לשרת')
+      console.error('Error deleting exercise:', err)
+    }
   }
 
   // שמירת עריכה
-  const saveEdit = (id, description, weight) => {
-    setExercises(exercises.map(ex => 
-      ex.id === id 
-        ? { ...ex, description, weight: parseFloat(weight) || 0 }
-        : ex
-    ))
-    setEditingId(null)
+  const saveEdit = async (id, description, weight) => {
+    try {
+      const response = await fetch('/api/exercises', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id,
+          description,
+          weight: parseFloat(weight)
+        })
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setExercises(exercises.map(ex => 
+          ex.id === id 
+            ? { ...ex, description, weight: parseFloat(weight) }
+            : ex
+        ))
+        setEditingId(null)
+      } else {
+        alert('שגיאה בעדכון התרגיל: ' + result.error)
+      }
+    } catch (err) {
+      alert('שגיאה בחיבור לשרת')
+      console.error('Error updating exercise:', err)
+    }
   }
 
   return (
@@ -61,6 +150,21 @@ export default function WorkoutsPage() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
+        
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <div className="flex justify-between items-center">
+              <span>{error}</span>
+              <button 
+                onClick={() => {setError(null); loadExercises()}}
+                className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+              >
+                נסה שוב
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* Add New Exercise Form */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
@@ -94,9 +198,10 @@ export default function WorkoutsPage() {
                 />
                 <button
                   onClick={addExercise}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  disabled={loading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400"
                 >
-                  הוסף
+                  {loading ? '...' : 'הוסף'}
                 </button>
               </div>
             </div>
@@ -112,7 +217,12 @@ export default function WorkoutsPage() {
             )}
           </div>
 
-          {exercises.length === 0 ? (
+          {loading ? (
+            <div className="p-12 text-center">
+              <div className="text-gray-400 text-2xl mb-4">⏳</div>
+              <p className="text-gray-500">טוען תרגילים...</p>
+            </div>
+          ) : exercises.length === 0 ? (
             <div className="p-12 text-center">
               <div className="text-gray-400 text-6xl mb-4">🏋️</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">עדיין לא הוספת תרגילים</h3>

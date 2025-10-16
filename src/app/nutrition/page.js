@@ -1,76 +1,131 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import Select from 'react-select';
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 
+async function safeGetJson(res) {
+  // Try to parse JSON; if it fails (e.g., HTML error page), return a structured error
+  try {
+    return await res.json()
+  } catch {
+    const text = await res.text().catch(() => '')
+    return { success: false, error: text || `HTTP ${res.status}` }
+  }
+}
 
 export default function NutritionPage() {
-  // state
-  const [values, setValues] = useState([]);     // nutrition_values (per 100g)
-  const [log, setLog] = useState([]);           // logged entries (computed)
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [values, setValues] = useState([])   // nutrition_values
+  const [log, setLog] = useState([])         // today’s entries
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // form state
-  const [selectedId, setSelectedId] = useState('');
-  const [grams, setGrams] = useState('');
+  const [selectedId, setSelectedId] = useState('')
+  const [grams, setGrams] = useState('')
 
-  // sorting helper for nicer dropdown
-  const collator = useMemo(() => new Intl.Collator(['he','en'], { sensitivity: 'base', numeric: true }), []);
+  const collator = useMemo(
+    () => new Intl.Collator(['he','en'], { sensitivity: 'base', numeric: true }),
+    []
+  )
   const sortedValues = useMemo(
-    () => [...values].sort((a,b)=>collator.compare((a.name??'').trim(), (b.name??'').trim())),
+    () => [...(values || [])].sort((a,b)=>collator.compare((a?.name??'').trim(), (b?.name??'').trim())),
     [values, collator]
-  );
+  )
 
-  // load values (source list) and log (user entries)
+  const totals = useMemo(() => {
+    return (log || []).reduce(
+      (acc, x) => {
+        acc.calories += Number(x?.calories) || 0
+        acc.protein  += Number(x?.protein)  || 0
+        return acc
+      },
+      { calories: 0, protein: 0 }
+    )
+  }, [log])
+
   const loadAll = async () => {
     try {
-      setLoading(true);
-      const [vRes, lRes] = await Promise.all([
+      setLoading(true)
+
+      const [vRes, lRes] = await Promise.allSettled([
         fetch('/api/nutrition-values'),
-        fetch('/api/nutrition')
-      ]);
-      const vJson = await vRes.json();
-      const lJson = await lRes.json();
-      if (vJson.success) setValues(vJson.data); else setError(vJson.error || 'שגיאה בטעינת רשימת פריטים');
-      if (lJson.success) setLog(lJson.data); else setError(lJson.error || 'שגיאה בטעינת יומן');
-    } catch {
-      setError('שגיאה בחיבור לשרת');
+        fetch('/api/nutrition'),
+      ])
+
+      // nutrition-values
+      if (vRes.status === 'fulfilled') {
+        if (vRes.value.ok) {
+          const vJson = await safeGetJson(vRes.value)
+          if (vJson?.success) setValues(Array.isArray(vJson.data) ? vJson.data : [])
+          else setError(vJson?.error || 'שגיאה בטעינת רשימת פריטים')
+        } else {
+          setError(`שגיאה בטעינת רשימת פריטים: HTTP ${vRes.value.status}`)
+        }
+      } else {
+        setError('שגיאה בטעינת רשימת פריטים (רשת)')
+      }
+
+      // nutrition log
+      if (lRes.status === 'fulfilled') {
+        if (lRes.value.ok) {
+          const lJson = await safeGetJson(lRes.value)
+          if (lJson?.success) setLog(Array.isArray(lJson.data) ? lJson.data : [])
+          else setError(lJson?.error || 'שגיאה בטעינת יומן')
+        } else {
+          setError(`שגיאה בטעינת יומן: HTTP ${lRes.value.status}`)
+        }
+      } else {
+        setError('שגיאה בטעינת יומן (רשת)')
+      }
+    } catch (e) {
+      setError('שגיאה כללית בטעינה')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  useEffect(()=>{ loadAll(); }, []);
+  useEffect(() => { loadAll() }, [])
 
-  // add entry (compute server-side)
   const addEntry = async () => {
-    if (!selectedId) return alert('בחר פריט מהרשימה');
-    const g = Number(grams);
-    if (!g || g <= 0) return alert('הכנס משקל בגרמים (> 0)');
+    try {
+      if (!selectedId) return alert('בחר פריט מהרשימה')
+      const g = Number(grams)
+      if (!g || g <= 0) return alert('הכנס משקל בגרמים (> 0)')
 
-    const res = await fetch('/api/nutrition', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ itemId: selectedId, grams: g })
-    });
-    const j = await res.json();
-    if (j.success) {
-      setLog(prev => [j.data, ...prev]);
-      setGrams('');
-    } else {
-      alert(j.error || 'שגיאה בהוספה');
+      const res = await fetch('/api/nutrition', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ itemId: selectedId, grams: g })
+      })
+      if (!res.ok) {
+        const txt = await res.text().catch(()=> '')
+        return alert(`שגיאה בהוספה: HTTP ${res.status} ${txt}`)
+      }
+      const j = await safeGetJson(res)
+      if (j?.success) {
+        setLog(prev => [j.data, ...(prev||[])])
+        setGrams('')
+      } else {
+        alert(j?.error || 'שגיאה בהוספה')
+      }
+    } catch {
+      alert('שגיאה בהוספה (רשת)')
     }
-  };
+  }
 
-  // delete entry
   const deleteEntry = async (id) => {
-    if (!confirm('למחוק רשומה זו?')) return;
-    const res = await fetch(`/api/nutrition?id=${id}`, { method:'DELETE' });
-    const j = await res.json();
-    if (j.success) setLog(prev => prev.filter(x => x._id !== id));
-    else alert(j.error || 'שגיאה במחיקה');
-  };
+    try {
+      if (!confirm('למחוק רשומה זו?')) return
+      const res = await fetch(`/api/nutrition?id=${id}`, { method:'DELETE' })
+      if (!res.ok) {
+        const txt = await res.text().catch(()=> '')
+        return alert(`שגיאה במחיקה: HTTP ${res.status} ${txt}`)
+      }
+      const j = await safeGetJson(res)
+      if (j?.success) setLog(prev => (prev||[]).filter(x => x?._id !== id))
+      else alert(j?.error || 'שגיאה במחיקה')
+    } catch {
+      alert('שגיאה במחיקה (רשת)')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-900 via-black to-amber-900 text-white">
@@ -88,25 +143,29 @@ export default function NutritionPage() {
         {error && (
           <div className="bg-red-900/50 border border-red-500/50 text-red-200 px-6 py-4 rounded-xl mb-8">
             <div className="flex justify-between items-center">
-              <span>{error}</span>
+              <span className="break-words">{String(error)}</span>
               <button onClick={()=>{ setError(null); loadAll(); }} className="bg-amber-600 px-4 py-2 rounded-lg">נסה שוב</button>
             </div>
           </div>
         )}
 
-        {/* Add form: select base item + grams */}
+        {/* Add form */}
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
             <div className="md:col-span-4">
               <label className="block text-gray-300 text-sm font-semibold mb-2">בחר פריט (מתוך ערכים תזונתיים)</label>
-              <Select
-              options={sortedValues.map(v => ({ value: v._id, label: v.name }))}
-              value={sortedValues.find(v => v._id === selectedId) ? { value: selectedId, label: sortedValues.find(v => v._id === selectedId).name } : null}
-              onChange={option => setSelectedId(option?.value || '')}
-              className="text-black"
-              placeholder="בחר פריט..."
-              isSearchable
-              />
+              <select
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3"
+                value={selectedId}
+                onChange={e=>setSelectedId(e.target.value)}
+              >
+                <option value="">— בחר פריט —</option>
+                {sortedValues.map(v => (
+                  <option key={v?._id} value={v?._id}>
+                    {v?.name} • {v?.calories} קק&quot;ל • {v?.protein} חלבון (ל־100 גרם)
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="md:col-span-2">
@@ -120,7 +179,6 @@ export default function NutritionPage() {
               />
             </div>
           </div>
-
           <button
             onClick={addEntry}
             disabled={loading}
@@ -128,68 +186,50 @@ export default function NutritionPage() {
           >
             {loading ? '...' : 'הוסף לרשימה'}
           </button>
-
         </div>
 
-        {/* Log list */}
-        {/* List */}
-<div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl overflow-hidden">
-  {/* Header */}
-  <div className="hidden md:grid bg-gray-700/30 px-4 md:px-8 py-3 grid-cols-12 gap-4 text-sm font-bold text-gray-300">
-    <div className="col-span-6">שם</div>
-    <div className="col-span-3 text-center">קלוריות</div>
-    <div className="col-span-3 text-center">חלבון (גרם)</div>
-  </div>
+        {/* Responsive list */}
+        <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl overflow-hidden">
+          <div className="hidden md:grid bg-gray-700/30 px-4 md:px-8 py-3 grid-cols-12 gap-4 text-sm font-bold text-gray-300">
+            <div className="col-span-5">שם</div>
+            <div className="col-span-2 text-center">גרמים</div>
+            <div className="col-span-2 text-center">קלוריות</div>
+            <div className="col-span-2 text-center">חלבון (גרם)</div>
+            <div className="col-span-1 text-center">מחיקה</div>
+          </div>
 
-  {loading ? (
-    <div className="p-10 text-center text-gray-300">טוען...</div>
-  ) : items.length === 0 ? (
-    <div className="p-10 text-center text-gray-300">אין פריטים עדיין</div>
-  ) : (
-    <div className="divide-y divide-gray-700/50">
-      {items.map((it) => (
-        <div
-          key={it._id}
-          className="px-4 md:px-8 py-5 flex flex-col md:grid md:grid-cols-12 md:gap-4"
-        >
-          {/* Mobile layout */}
-          <div className="md:hidden mb-3">
-            <div className="text-lg font-semibold text-white">{it.name}</div>
-            <div className="text-sm text-gray-400 mt-1">
-              {it.calories} קק"ל • {it.protein} חלבון
+          {loading ? (
+            <div className="p-10 text-center text-gray-300">טוען...</div>
+          ) : (log||[]).length === 0 ? (
+            <div className="p-10 text-center text-gray-300">אין רשומות עדיין</div>
+          ) : (
+            <div className="divide-y divide-gray-700/50">
+              {(log||[]).map(entry => (
+                <div key={entry?._id} className="px-4 md:px-8 py-4 flex flex-col md:grid md:grid-cols-12 md:gap-4">
+                  {/* Mobile */}
+                  <div className="md:hidden mb-3">
+                    <div className="text-lg font-semibold text-white">{entry?.name}</div>
+                    <div className="text-sm text-gray-400 mt-1">
+                      {entry?.grams} גרם • {entry?.calories} קק&quot;ל • {entry?.protein} חלבון
+                    </div>
+                  </div>
+
+                  {/* Desktop */}
+                  <div className="hidden md:block md:col-span-5">{entry?.name}</div>
+                  <div className="hidden md:block md:col-span-2 text-center">{entry?.grams}</div>
+                  <div className="hidden md:block md:col-span-2 text-center text-amber-300 font-semibold">{entry?.calories}</div>
+                  <div className="hidden md:block md:col-span-2 text-center text-amber-300 font-semibold">{entry?.protein}</div>
+                  <div className="mt-3 md:mt-0 md:col-span-1 flex justify-end">
+                    <button onClick={()=>deleteEntry(entry?._id)} className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm md:text-base">
+                      מחק
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-
-          {/* Desktop layout */}
-          <div className="hidden md:block md:col-span-6">{it.name}</div>
-          <div className="hidden md:block md:col-span-3 text-center text-green-300 font-semibold">
-            {it.calories}
-          </div>
-          <div className="hidden md:block md:col-span-3 text-center text-green-300 font-semibold">
-            {it.protein}
-          </div>
-
-          <div className="mt-3 md:mt-0 flex justify-end gap-2">
-            <button
-              onClick={() => setEditingId(it._id)}
-              className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-sm md:text-base"
-            >
-              ערוך
-            </button>
-            <button
-              onClick={() => deleteItem(it._id)}
-              className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm md:text-base"
-            >
-              מחק
-            </button>
-          </div>
+          )}
         </div>
-      ))}
-    </div>
-  )}
-</div>
-
       </main>
     </div>
-  );
+  )
 }

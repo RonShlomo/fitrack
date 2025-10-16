@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import Select from 'react-select';
+
 
 async function safeGetJson(res) {
   // Try to parse JSON; if it fails (e.g., HTML error page), return a structured error
@@ -155,7 +157,7 @@ export default function NutritionPage() {
             <div className="md:col-span-4">
               <label className="block text-gray-300 text-sm font-semibold mb-2">בחר פריט (מתוך ערכים תזונתיים)</label>
               <Select
-  instanceId="nutrition-select"               // avoids SSR id mismatch warnings
+  instanceId="nutrition-select"
   options={(sortedValues || []).map(v => ({
     value: v?._id,
     label: `${v?.name} • ${v?.calories} קק״ל • ${v?.protein} חלבון (ל־100 גרם)`,
@@ -171,28 +173,27 @@ export default function NutritionPage() {
   isClearable
   isSearchable
   placeholder="בחר פריט..."
-  // Dark theme-ish styles to blend with your Tailwind UI
   styles={{
     control: (base, state) => ({
       ...base,
-      backgroundColor: 'rgba(55,65,81,0.5)', // gray-700/50
-      borderColor: state.isFocused ? '#10B981' : '#4B5563', // green-500 : gray-600
+      backgroundColor: 'rgba(55,65,81,0.5)',
+      borderColor: state.isFocused ? '#10B981' : '#4B5563',
       boxShadow: 'none',
       ':hover': { borderColor: state.isFocused ? '#10B981' : '#6B7280' },
-      borderRadius: '0.75rem', // rounded-xl
+      borderRadius: '0.75rem',
       minHeight: 48,
       color: 'white',
     }),
     singleValue: (base) => ({ ...base, color: 'white' }),
     input: (base) => ({ ...base, color: 'white' }),
-    menu: (base) => ({ ...base, backgroundColor: '#111827', color: 'white' }), // gray-900
+    menu: (base) => ({ ...base, backgroundColor: '#111827', color: 'white' }),
     option: (base, state) => ({
       ...base,
-      backgroundColor: state.isFocused ? 'rgba(16,185,129,0.15)' : 'transparent', // green-500/15
+      backgroundColor: state.isFocused ? 'rgba(16,185,129,0.15)' : 'transparent',
       color: 'white',
       ':active': { backgroundColor: 'rgba(16,185,129,0.25)' },
     }),
-    placeholder: (base) => ({ ...base, color: '#9CA3AF' }), // gray-400
+    placeholder: (base) => ({ ...base, color: '#9CA3AF' }),
     dropdownIndicator: (base, state) => ({
       ...base,
       color: state.isFocused ? '#10B981' : '#9CA3AF',
@@ -202,6 +203,7 @@ export default function NutritionPage() {
     indicatorSeparator: (base) => ({ ...base, backgroundColor: 'transparent' }),
   }}
 />
+
 
             </div>
 

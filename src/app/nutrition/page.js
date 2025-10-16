@@ -132,35 +132,63 @@ export default function NutritionPage() {
         </div>
 
         {/* Log list */}
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl overflow-hidden">
-          <div className="bg-gray-700/30 px-4 md:px-8 py-3 grid grid-cols-12 gap-4 text-sm font-bold text-gray-300">
-            <div className="col-span-5">שם</div>
-            <div className="col-span-2 text-center">גרמים</div>
-            <div className="col-span-2 text-center">קלוריות</div>
-            <div className="col-span-2 text-center">חלבון (גרם)</div>
-            <div className="col-span-1 text-center">מחיקה</div>
+        {/* List */}
+<div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl overflow-hidden">
+  {/* Header */}
+  <div className="hidden md:grid bg-gray-700/30 px-4 md:px-8 py-3 grid-cols-12 gap-4 text-sm font-bold text-gray-300">
+    <div className="col-span-6">שם</div>
+    <div className="col-span-3 text-center">קלוריות</div>
+    <div className="col-span-3 text-center">חלבון (גרם)</div>
+  </div>
+
+  {loading ? (
+    <div className="p-10 text-center text-gray-300">טוען...</div>
+  ) : items.length === 0 ? (
+    <div className="p-10 text-center text-gray-300">אין פריטים עדיין</div>
+  ) : (
+    <div className="divide-y divide-gray-700/50">
+      {items.map((it) => (
+        <div
+          key={it._id}
+          className="px-4 md:px-8 py-5 flex flex-col md:grid md:grid-cols-12 md:gap-4"
+        >
+          {/* Mobile layout */}
+          <div className="md:hidden mb-3">
+            <div className="text-lg font-semibold text-white">{it.name}</div>
+            <div className="text-sm text-gray-400 mt-1">
+              {it.calories} קק"ל • {it.protein} חלבון
+            </div>
           </div>
 
-          {loading ? (
-            <div className="p-10 text-center text-gray-300">טוען...</div>
-          ) : log.length === 0 ? (
-            <div className="p-10 text-center text-gray-300">אין רשומות עדיין</div>
-          ) : (
-            <div className="divide-y divide-gray-700/50">
-              {log.map(entry => (
-                <div key={entry._id} className="px-4 md:px-8 py-4 grid grid-cols-12 gap-4 items-center">
-                  <div className="col-span-5">{entry.name}</div>
-                  <div className="col-span-2 text-center">{entry.grams}</div>
-                  <div className="col-span-2 text-center text-amber-300 font-semibold">{entry.calories}</div>
-                  <div className="col-span-2 text-center text-amber-300 font-semibold">{entry.protein}</div>
-                  <div className="col-span-1 text-center">
-                    <button onClick={()=>deleteEntry(entry._id)} className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg">מחק</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Desktop layout */}
+          <div className="hidden md:block md:col-span-6">{it.name}</div>
+          <div className="hidden md:block md:col-span-3 text-center text-green-300 font-semibold">
+            {it.calories}
+          </div>
+          <div className="hidden md:block md:col-span-3 text-center text-green-300 font-semibold">
+            {it.protein}
+          </div>
+
+          <div className="mt-3 md:mt-0 flex justify-end gap-2">
+            <button
+              onClick={() => setEditingId(it._id)}
+              className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-sm md:text-base"
+            >
+              ערוך
+            </button>
+            <button
+              onClick={() => deleteItem(it._id)}
+              className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm md:text-base"
+            >
+              מחק
+            </button>
+          </div>
         </div>
+      ))}
+    </div>
+  )}
+</div>
+
       </main>
     </div>
   );

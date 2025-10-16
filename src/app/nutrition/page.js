@@ -154,18 +154,55 @@ export default function NutritionPage() {
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
             <div className="md:col-span-4">
               <label className="block text-gray-300 text-sm font-semibold mb-2">בחר פריט (מתוך ערכים תזונתיים)</label>
-              <select
-                className="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3"
-                value={selectedId}
-                onChange={e=>setSelectedId(e.target.value)}
-              >
-                <option value="">— בחר פריט —</option>
-                {sortedValues.map(v => (
-                  <option key={v?._id} value={v?._id}>
-                    {v?.name} • {v?.calories} קק&quot;ל • {v?.protein} חלבון (ל־100 גרם)
-                  </option>
-                ))}
-              </select>
+              <Select
+  instanceId="nutrition-select"               // avoids SSR id mismatch warnings
+  options={(sortedValues || []).map(v => ({
+    value: v?._id,
+    label: `${v?.name} • ${v?.calories} קק״ל • ${v?.protein} חלבון (ל־100 גרם)`,
+  }))}
+  value={
+    selectedId
+      ? (sortedValues || [])
+          .map(v => ({ value: v?._id, label: `${v?.name} • ${v?.calories} קק״ל • ${v?.protein} חלבון (ל־100 גרם)` }))
+          .find(o => o.value === selectedId) || null
+      : null
+  }
+  onChange={(opt) => setSelectedId(opt?.value || '')}
+  isClearable
+  isSearchable
+  placeholder="בחר פריט..."
+  // Dark theme-ish styles to blend with your Tailwind UI
+  styles={{
+    control: (base, state) => ({
+      ...base,
+      backgroundColor: 'rgba(55,65,81,0.5)', // gray-700/50
+      borderColor: state.isFocused ? '#10B981' : '#4B5563', // green-500 : gray-600
+      boxShadow: 'none',
+      ':hover': { borderColor: state.isFocused ? '#10B981' : '#6B7280' },
+      borderRadius: '0.75rem', // rounded-xl
+      minHeight: 48,
+      color: 'white',
+    }),
+    singleValue: (base) => ({ ...base, color: 'white' }),
+    input: (base) => ({ ...base, color: 'white' }),
+    menu: (base) => ({ ...base, backgroundColor: '#111827', color: 'white' }), // gray-900
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isFocused ? 'rgba(16,185,129,0.15)' : 'transparent', // green-500/15
+      color: 'white',
+      ':active': { backgroundColor: 'rgba(16,185,129,0.25)' },
+    }),
+    placeholder: (base) => ({ ...base, color: '#9CA3AF' }), // gray-400
+    dropdownIndicator: (base, state) => ({
+      ...base,
+      color: state.isFocused ? '#10B981' : '#9CA3AF',
+      ':hover': { color: '#10B981' },
+    }),
+    clearIndicator: (base) => ({ ...base, color: '#9CA3AF', ':hover': { color: '#F87171' } }),
+    indicatorSeparator: (base) => ({ ...base, backgroundColor: 'transparent' }),
+  }}
+/>
+
             </div>
 
             <div className="md:col-span-2">

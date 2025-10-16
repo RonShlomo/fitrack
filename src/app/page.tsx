@@ -92,15 +92,6 @@ export default function Home() {
         </div>
         
         {/* Bottom CTA */}
-        <div className="mt-16 text-center">
-          <p className="text-gray-400 text-lg mb-4">מוכן להתחיל את המסע שלך?</p>
-          <div className="inline-flex items-center gap-2 text-red-400 font-semibold">
-            <span>בחר קטגוריה והתחל עכשיו</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </div>
-        </div>
       </main>
     </div>
   )

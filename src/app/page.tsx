@@ -19,8 +19,27 @@ export default function Home() {
       gradient: "from-amber-600 via-amber-700 to-amber-800",
       hoverGradient: "from-amber-500 via-amber-600 to-amber-700",
       accent: "bg-amber-500/20"
+    },
+    {
+      title: "ערכים תזונתיים",
+      description: "נתונים ותוכן תזונתי של מזונות",
+      href: "/nutrition-values",
+      icon: "🍎",
+      gradient: "from-green-600 via-green-700 to-green-800",
+      hoverGradient: "from-green-500 via-green-600 to-green-700",
+      accent: "bg-green-500/20"
+    },
+    {
+      title: "סטטיסטיקה",
+      description: "מעקב וניתוח הביצועים שלך לאורך זמן",
+      href: "/statistics",
+      icon: "📊",
+      gradient: "from-blue-600 via-blue-700 to-blue-800",
+      hoverGradient: "from-blue-500 via-blue-600 to-blue-700",
+      accent: "bg-blue-500/20"
     }
-  ]
+  ];
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">

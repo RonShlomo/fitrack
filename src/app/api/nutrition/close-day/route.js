@@ -20,15 +20,28 @@ async function getDb() {
   return client.db(DB_NAME);
 }
 
-// POST (?dateKey=YYYY-MM-DD) -> aggregate that day, upsert into statistics, clear that day's log
+// POST (?dateKey=YYYY-MM-DD) -> aggregate that day; only write if there were entries
 export async function POST(req) {
   const db = await getDb();
   const { searchParams } = new URL(req.url);
   const paramKey = searchParams.get('dateKey');
   const targetKey = paramKey || dateKeyTZ();
 
+  // 1) Read items for that day
   const items = await db.collection(LOG_COLL).find({ dateKey: targetKey }).toArray();
+  const hadItems = items.length > 0;
 
+  // 2) If no items, and no existing stat doc, DO NOTHING (avoid recreating after manual delete)
+  if (!hadItems) {
+    const existing = await db.collection(STATS_COLL).findOne({ dateKey: targetKey });
+    if (!existing) {
+      return json({ success: true, closed: false, reason: 'no-items' });
+    }
+    // If there IS an existing stat row and no items in the log, we also leave it as-is.
+    return json({ success: true, closed: false, reason: 'no-items-existing-stat-preserved' });
+  }
+
+  // 3) Aggregate totals when there ARE items
   const totals = items.reduce((acc, x) => {
     acc.calories += Number(x?.calories) || 0;
     acc.protein  += Number(x?.protein)  || 0;
@@ -42,15 +55,15 @@ export async function POST(req) {
     createdAt: new Date(),
   };
 
-  // Upsert so calling multiple times is safe (idempotent)
+  // 4) Upsert stats for that day (idempotent when there WERE items)
   await db.collection(STATS_COLL).updateOne(
     { dateKey: targetKey },
     { $set: statDoc },
     { upsert: true }
   );
 
-  // Clear that day's log
+  // 5) Clear that day's log
   await db.collection(LOG_COLL).deleteMany({ dateKey: targetKey });
 
-  return json({ success: true, data: statDoc });
+  return json({ success: true, closed: true, data: statDoc });
 }

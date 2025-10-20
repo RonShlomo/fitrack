@@ -2,6 +2,30 @@
 import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
 
+// ------------ Week helpers (Asia/Jerusalem) ------------
+const TZ = 'Asia/Jerusalem'
+
+// Returns an ISO-like week key: YYYY-Www for the date in TZ
+function weekKeyTZ(date = new Date()) {
+  // Convert date to TZ calendar day to avoid DST pitfalls
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(date).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
+  const tzDate = new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00`)
+
+  // ISO week calculation
+  const dayNum = (tzDate.getDay() + 6) % 7 // Mon=0..Sun=6
+  const thurs = new Date(tzDate)
+  thurs.setDate(tzDate.getDate() - dayNum + 3)
+  const firstThurs = new Date(thurs.getFullYear(), 0, 1)
+  const firstThursDayNum = (firstThurs.getDay() + 6) % 7
+  firstThurs.setDate(firstThurs.getDate() - firstThursDayNum + 3)
+  const week = 1 + Math.round((thurs - firstThurs) / (7 * 24 * 3600 * 1000))
+  const year = thurs.getFullYear()
+  const ww = String(week).padStart(2, '0')
+  return `${year}-W${ww}`
+}
+
 export default function WorkoutsPage() {
   // ---- Sorting helpers (Hebrew + English, case-insensitive, numeric-aware) ----
   const collator = useMemo(
@@ -25,6 +49,35 @@ export default function WorkoutsPage() {
   const [editingId, setEditingId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // ---- Cardio weekly tracker (persists per week in localStorage) ----
+  const [weekKey, setWeekKey] = useState(weekKeyTZ())
+  const [cardioThisWeek, setCardioThisWeek] = useState('0')
+
+  // Load cardio value when weekKey changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`fitrack_cardio_${weekKey}`)
+      setCardioThisWeek(saved ?? '0')
+    } catch {
+      setCardioThisWeek('0')
+    }
+  }, [weekKey])
+
+  // Update weekKey on window focus (handles week rollover while tab open)
+  useEffect(() => {
+    const onFocus = () => setWeekKey(weekKeyTZ())
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  const updateCardio = (val) => {
+    const safe = String(val ?? '0')
+    setCardioThisWeek(safe)
+    try {
+      localStorage.setItem(`fitrack_cardio_${weekKey}`, safe)
+    } catch {}
+  }
 
   // Sorted view (belt & suspenders)
   const sortedExercises = useMemo(() => sortByDescription(exercisesRaw), [exercisesRaw])
@@ -166,6 +219,33 @@ export default function WorkoutsPage() {
         </div>
       </header>
 
+      {/* Weekly Cardio Tracker */}
+      <section className="relative max-w-4xl mx-auto px-4 pt-6">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="text-sm text-gray-400">שבוע</div>
+            <div className="text-lg font-semibold text-white">{weekKey}</div>
+          </div>
+
+          <div className="flex-1 md:max-w-sm">
+            <label className="block text-gray-300 text-sm font-semibold mb-2">
+              קרדיו השבוע (דקות)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={cardioThisWeek}
+              onChange={(e) => updateCardio(e.target.value)}
+              placeholder="0"
+              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+            />
+            <p className="text-xs text-gray-400 mt-2">
+              מתאפס אוטומטית בתחילת שבוע חדש (לפי אזור הזמן Asia/Jerusalem).
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Main Content */}
       <main className="relative max-w-4xl mx-auto px-4 py-8">
         {/* Error Display */}
@@ -247,7 +327,6 @@ export default function WorkoutsPage() {
             </div>
           ) : (
             <div className="divide-y divide-gray-700/50">
-
               {sortedExercises.map((exercise) => (
                 <ExerciseRow
                   key={exercise.id}

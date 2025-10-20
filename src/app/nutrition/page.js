@@ -1,11 +1,27 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import Select from 'react-select';
+import dynamic from 'next/dynamic'
 
+const TZ = 'Asia/Jerusalem';
+function dateKeyTZ(d = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(d).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+function yesterdayKey() {
+  const d = new Date();
+  // 24h back in *wall time* for Asia/Jerusalem is ok for a simple app
+  d.setDate(d.getDate() - 1);
+  return dateKeyTZ(d);
+}
+
+
+// Load react-select on the client only to avoid SSR/hydration issues
+const Select = dynamic(() => import('react-select'), { ssr: false })
 
 async function safeGetJson(res) {
-  // Try to parse JSON; if it fails (e.g., HTML error page), return a structured error
   try {
     return await res.json()
   } catch {
@@ -15,8 +31,8 @@ async function safeGetJson(res) {
 }
 
 export default function NutritionPage() {
-  const [values, setValues] = useState([])   // nutrition_values
-  const [log, setLog] = useState([])         // today’s entries
+  const [values, setValues] = useState([])   // nutrition_values (per 100g)
+  const [log, setLog] = useState([])         // today's entries
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -32,6 +48,7 @@ export default function NutritionPage() {
     [values, collator]
   )
 
+  // DAILY TOTALS (shown at top)
   const totals = useMemo(() => {
     return (log || []).reduce(
       (acc, x) => {
@@ -65,7 +82,7 @@ export default function NutritionPage() {
         setError('שגיאה בטעינת רשימת פריטים (רשת)')
       }
 
-      // nutrition log
+      // nutrition log (today)
       if (lRes.status === 'fulfilled') {
         if (lRes.value.ok) {
           const lJson = await safeGetJson(lRes.value)
@@ -77,14 +94,30 @@ export default function NutritionPage() {
       } else {
         setError('שגיאה בטעינת יומן (רשת)')
       }
-    } catch (e) {
+    } catch {
       setError('שגיאה כללית בטעינה')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { loadAll() }, [])
+  const autoCloseYesterday = async () => {
+    try {
+      // silently try to close yesterday; endpoint is idempotent
+      const y = yesterdayKey();
+      await fetch(`/api/nutrition/close-day?dateKey=${y}`, { method: 'POST' });
+    } catch {
+      // ignore; this is best-effort
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      await autoCloseYesterday(); // close previous day if anything left open
+      await loadAll();            // now load ONLY today's items
+    })();
+  }, []);
+  
 
   const addEntry = async () => {
     try {
@@ -129,6 +162,27 @@ export default function NutritionPage() {
     }
   }
 
+  // CLOSE DAY: write totals to /statistics and clear today's log
+  const closeDay = async () => {
+    if (!confirm('לסגור את היום? זה יוסיף את הסיכום לסטטיסטיקה ויאפס את הרשימה.')) return
+    try {
+      const res = await fetch('/api/nutrition/close-day', { method: 'POST' })
+      if (!res.ok) {
+        const txt = await res.text().catch(()=> '')
+        return alert(`שגיאה בסגירת היום: HTTP ${res.status} ${txt}`)
+      }
+      const j = await safeGetJson(res)
+      if (j.success) {
+        setLog([]) // emptied
+        alert('היום נסגר. הסיכום נשמר בסטטיסטיקה.')
+      } else {
+        alert(j.error || 'שגיאה בסגירת היום')
+      }
+    } catch {
+      alert('שגיאה בסגירת היום (רשת)')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-900 via-black to-amber-900 text-white">
       {/* Header */}
@@ -151,60 +205,78 @@ export default function NutritionPage() {
           </div>
         )}
 
+        {/* Totals + Close Day */}
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6">
+            <div className="text-gray-300 text-sm">סך קלוריות (היום)</div>
+            <div className="text-3xl font-extrabold text-amber-300 mt-1">{totals.calories}</div>
+          </div>
+          <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6">
+            <div className="text-gray-300 text-sm">סך חלבון (גרם) (היום)</div>
+            <div className="text-3xl font-extrabold text-amber-300 mt-1">{totals.protein.toFixed(1)}</div>
+          </div>
+          <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 flex items-center">
+            <button onClick={closeDay} className="w-full bg-amber-600 hover:bg-amber-500 px-4 py-3 rounded-xl font-bold">
+              סגור יום ושמור לסטטיסטיקה
+            </button>
+          </div>
+        </div>
+
         {/* Add form */}
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
             <div className="md:col-span-4">
               <label className="block text-gray-300 text-sm font-semibold mb-2">בחר פריט (מתוך ערכים תזונתיים)</label>
-              <Select
-  instanceId="nutrition-select"
-  options={(sortedValues || []).map(v => ({
-    value: v?._id,
-    label: `${v?.name} • ${v?.calories} קק״ל • ${v?.protein} חלבון (ל־100 גרם)`,
-  }))}
-  value={
-    selectedId
-      ? (sortedValues || [])
-          .map(v => ({ value: v?._id, label: `${v?.name} • ${v?.calories} קק״ל • ${v?.protein} חלבון (ל־100 גרם)` }))
-          .find(o => o.value === selectedId) || null
-      : null
-  }
-  onChange={(opt) => setSelectedId(opt?.value || '')}
-  isClearable
-  isSearchable
-  placeholder="בחר פריט..."
-  styles={{
-    control: (base, state) => ({
-      ...base,
-      backgroundColor: 'rgba(55,65,81,0.5)',
-      borderColor: state.isFocused ? '#10B981' : '#4B5563',
-      boxShadow: 'none',
-      ':hover': { borderColor: state.isFocused ? '#10B981' : '#6B7280' },
-      borderRadius: '0.75rem',
-      minHeight: 48,
-      color: 'white',
-    }),
-    singleValue: (base) => ({ ...base, color: 'white' }),
-    input: (base) => ({ ...base, color: 'white' }),
-    menu: (base) => ({ ...base, backgroundColor: '#111827', color: 'white' }),
-    option: (base, state) => ({
-      ...base,
-      backgroundColor: state.isFocused ? 'rgba(16,185,129,0.15)' : 'transparent',
-      color: 'white',
-      ':active': { backgroundColor: 'rgba(16,185,129,0.25)' },
-    }),
-    placeholder: (base) => ({ ...base, color: '#9CA3AF' }),
-    dropdownIndicator: (base, state) => ({
-      ...base,
-      color: state.isFocused ? '#10B981' : '#9CA3AF',
-      ':hover': { color: '#10B981' },
-    }),
-    clearIndicator: (base) => ({ ...base, color: '#9CA3AF', ':hover': { color: '#F87171' } }),
-    indicatorSeparator: (base) => ({ ...base, backgroundColor: 'transparent' }),
-  }}
-/>
 
-
+              {Array.isArray(sortedValues) && (
+                <Select
+                  instanceId="nutrition-select"
+                  options={(sortedValues || []).map(v => ({
+                    value: v?._id,
+                    label: `${v?.name} • ${v?.calories} קק״ל • ${v?.protein} חלבון (ל־100 גרם)`,
+                  }))}
+                  value={
+                    selectedId
+                      ? (sortedValues || [])
+                          .map(v => ({ value: v?._id, label: `${v?.name} • ${v?.calories} קק״ל • ${v?.protein} חלבון (ל־100 גרם)` }))
+                          .find(o => o.value === selectedId) || null
+                      : null
+                  }
+                  onChange={(opt) => setSelectedId(opt?.value || '')}
+                  isClearable
+                  isSearchable
+                  placeholder="בחר פריט..."
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      backgroundColor: 'rgba(55,65,81,0.5)',
+                      borderColor: state.isFocused ? '#10B981' : '#4B5563',
+                      boxShadow: 'none',
+                      ':hover': { borderColor: state.isFocused ? '#10B981' : '#6B7280' },
+                      borderRadius: '0.75rem',
+                      minHeight: 48,
+                      color: 'white',
+                    }),
+                    singleValue: (base) => ({ ...base, color: 'white' }),
+                    input: (base) => ({ ...base, color: 'white' }),
+                    menu: (base) => ({ ...base, backgroundColor: '#111827', color: 'white' }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isFocused ? 'rgba(16,185,129,0.15)' : 'transparent',
+                      color: 'white',
+                      ':active': { backgroundColor: 'rgba(16,185,129,0.25)' },
+                    }),
+                    placeholder: (base) => ({ ...base, color: '#9CA3AF' }),
+                    dropdownIndicator: (base, state) => ({
+                      ...base,
+                      color: state.isFocused ? '#10B981' : '#9CA3AF',
+                      ':hover': { color: '#10B981' },
+                    }),
+                    clearIndicator: (base) => ({ ...base, color: '#9CA3AF', ':hover': { color: '#F87171' } }),
+                    indicatorSeparator: (base) => ({ ...base, backgroundColor: 'transparent' }),
+                  }}
+                />
+              )}
             </div>
 
             <div className="md:col-span-2">
